@@ -17,7 +17,9 @@ Optional environment variables
 FABRIC_ENVIRONMENT
     Logical environment name (e.g. ``production``) forwarded to
     ``FabricWorkspace`` for ``parameter.yml`` find/replace resolution.
-    Unused unless a ``parameter.yml`` is added to ``workspace/``.
+    Unused unless a ``parameter.yml`` is added to ``workspace/``. Defaults
+    to fabric-cicd's own default (``"N/A"``) when unset -- fabric-cicd
+    requires a string here and rejects ``None``.
 REPOSITORY_DIRECTORY
     Overrides the directory scanned for Fabric items. Defaults to the
     repository's ``workspace/`` folder.
@@ -61,7 +63,9 @@ def main() -> int:
         )
         return 1
 
-    environment = os.environ.get("FABRIC_ENVIRONMENT", "").strip() or None
+    # fabric_cicd.FabricWorkspace.environment must be a string (default "N/A")
+    # -- it performs a strict type check and rejects None.
+    environment = os.environ.get("FABRIC_ENVIRONMENT", "").strip() or "N/A"
     repository_directory = Path(
         os.environ.get("REPOSITORY_DIRECTORY", "").strip() or WORKSPACE_DIRECTORY
     ).resolve()
@@ -75,7 +79,7 @@ def main() -> int:
         return 1
 
     print(f"Fabric workspace id:     {workspace_id}")
-    print(f"Environment:             {environment or '(none)'}")
+    print(f"Environment:             {environment}")
     print(f"Repository directory:    {repository_directory}")
     print(f"Item types in scope:     {ITEM_TYPES_IN_SCOPE}")
     print(f"Unpublish orphan items:  {enable_unpublish_orphans}")

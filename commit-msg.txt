@@ -1,0 +1,11 @@
+fix(deploy): fabric_cicd requires environment to be a string, not None
+
+FabricWorkspace.environment defaults to the string "N/A" and performs a
+strict type check -- passing None (our previous behavior when
+FABRIC_ENVIRONMENT was unset) raised:
+
+  The provided environment is not of type string.
+
+Default to "N/A" instead of None when FABRIC_ENVIRONMENT is unset.
+
+Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>
