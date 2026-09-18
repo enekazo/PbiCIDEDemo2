@@ -1,0 +1,5 @@
+# Development / CI-only dependencies (linting, testing).
+-r requirements.txt
+
+pytest>=8.0.0
+ruff>=0.6.0

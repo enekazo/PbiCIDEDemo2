@@ -1,0 +1,14 @@
+# Runtime dependencies for the Fabric PBIP deployment/validation tooling.
+#
+# fabric-cicd: official Microsoft-backed library for deploying Power BI
+# Project (PBIP) and other Fabric item definitions from source control.
+# https://microsoft.github.io/fabric-cicd/
+fabric-cicd==1.3.0
+
+# azure-identity: provides AzureCliCredential used for local `az login`
+# authentication and for GitHub OIDC federated credentials via `azure/login`.
+azure-identity>=1.25.0
+
+# requests: used by the post-deployment validation script to call the
+# Fabric REST API directly (list workspace items).
+requests>=2.32.3
