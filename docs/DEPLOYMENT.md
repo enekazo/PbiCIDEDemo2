@@ -80,9 +80,12 @@ secret value — OIDC federation replaces the client secret):
 |---|---|
 | `AZURE_CLIENT_ID` | Application (client) ID from step 2 |
 | `AZURE_TENANT_ID` | Directory (tenant) ID from step 2 |
-| `AZURE_SUBSCRIPTION_ID` | The Azure subscription ID that hosts the app registration (any subscription the identity can see — Fabric billing is independent of this) |
 | `FABRIC_WORKSPACE_ID` | GUID of the target Fabric workspace from step 1 |
 | `FABRIC_ENVIRONMENT` | *(optional)* logical environment name forwarded to `fabric-cicd`'s `parameter.yml` resolution — leave unset unless you add a `parameter.yml` to `workspace/` |
+
+`AZURE_SUBSCRIPTION_ID` is **not required**. `fabric-cicd` only calls the
+Fabric REST API (never Azure Resource Manager), so the login step does not
+select an Azure subscription — see § 7.2 below.
 
 None of these values are secret in the traditional sense (they are IDs, not
 credentials), which is why OIDC federation is used instead of a stored
@@ -144,7 +147,11 @@ python -m ruff check scripts tests
 
 ```powershell
 az login
-az account set --subscription <AZURE_SUBSCRIPTION_ID>
+# az account set --subscription <id>   # optional; only needed if your
+                                        # account has multiple subscriptions
+                                        # and az CLI prompts you to pick one.
+                                        # fabric-cicd itself never uses the
+                                        # selected subscription.
 
 $env:FABRIC_WORKSPACE_ID = "<your-workspace-guid>"
 python scripts/deploy_to_fabric.py
@@ -193,18 +200,28 @@ az ad app federated-credential update \
   --parameters '{"subject":"<subject string from the error message>"}'
 ```
 
-### 7.2 `No subscriptions found for ***`
+### 7.2 `No subscriptions found for ***` / `The subscription of '<id>' doesn't exist in cloud 'AzureCloud'`
 
 `fabric-cicd` only needs an Azure AD access token for the Fabric REST API
 (`https://api.fabric.microsoft.com/.default`) — it never calls Azure
 Resource Manager, so the service principal does **not** need any role
-assignment on `AZURE_SUBSCRIPTION_ID`. However, `azure/login` by default
-also tries to select a subscription context after signing in, and fails
-with `No subscriptions found for ***` if the service principal has zero
-subscription-scoped role assignments. The `deploy-fabric.yml` workflow sets
-`allow-no-subscriptions: true` on the login step to avoid this — if you
-copy this workflow elsewhere, keep that flag rather than granting the
-service principal an unnecessary subscription role.
+assignment on an Azure subscription, and the login step does not pass a
+`subscription-id` at all. Two related failure modes:
+
+- **`No subscriptions found for ***`** — happens if a `subscription-id` is
+  passed to `azure/login` (or the action tries to auto-select one) while
+  `allow-no-subscriptions` is unset/`false`, and the service principal has
+  zero subscription-scoped role assignments.
+- **`The subscription of '<id>' doesn't exist in cloud 'AzureCloud'`** —
+  happens if a `subscription-id` *is* explicitly passed and that ID is not
+  among the (zero) subscriptions visible to the service principal.
+  `allow-no-subscriptions: true` does **not** prevent this failure, because
+  it only changes behavior when no `subscription-id` is supplied at all.
+
+The fix used here: omit `subscription-id` from the `azure/login` step
+entirely and keep `allow-no-subscriptions: true`. Do not grant the service
+principal an Azure subscription role just to make `azure/login` happy —
+that would be unnecessary access for a Fabric-only workload.
 
 ## 8. Data refresh
 

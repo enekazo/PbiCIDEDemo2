@@ -44,12 +44,13 @@ jobs:
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
           # fabric-cicd only needs an Azure AD token for the Fabric REST API
           # (not ARM), so the service principal does not need any Azure
-          # subscription role assignment. Without this flag, azure/login
-          # fails with "No subscriptions found for ***" when the SP has
-          # zero subscription-scoped role assignments.
+          # subscription role assignment, and no subscription-id is passed
+          # here. If a subscription-id were supplied, azure/login would try
+          # to set it as the active subscription and fail with "doesn't
+          # exist in cloud 'AzureCloud'" for any subscription the SP cannot
+          # see (which is the expected state for a Fabric-only identity).
           allow-no-subscriptions: true
 
       - name: Deploy to Fabric workspace
