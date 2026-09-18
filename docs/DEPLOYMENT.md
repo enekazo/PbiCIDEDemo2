@@ -165,7 +165,48 @@ in the workspace that is not present in `workspace/`. This is **destructive
 and irreversible**; leave it unset (default `false`) unless you specifically
 intend the Fabric workspace to be a byte-for-byte mirror of `workspace/`.
 
-## 7. Data refresh
+## 7. Troubleshooting
+
+### 7.1 `AADSTS700213: No matching federated identity record found`
+
+The `subject` claim GitHub Actions presents in its OIDC token does not
+always match the plain `repo:<owner>/<repo>:environment:<name>` format
+shown in most examples. Some GitHub organizations (for example, those using
+Enterprise Managed Users) present numeric suffixes appended to the owner
+and/or repository name instead, e.g.:
+
+```
+repo:<owner>@<owner-numeric-id>/<repo>@<repo-numeric-id>:environment:production
+```
+
+If the federated credential's **Subject** was configured with the plain
+form (or a stale numeric id), Azure AD rejects the token exchange with
+`AADSTS700213`, and `azure/login` fails with `Login failed... 'az' failed
+with exit code 1`. Fix: check the exact subject GitHub sent (it's printed
+in the failed run's error message) and update the federated credential to
+match it exactly:
+
+```bash
+az ad app federated-credential update \
+  --id <AZURE_CLIENT_ID> \
+  --federated-credential-id <credential-id> \
+  --parameters '{"subject":"<subject string from the error message>"}'
+```
+
+### 7.2 `No subscriptions found for ***`
+
+`fabric-cicd` only needs an Azure AD access token for the Fabric REST API
+(`https://api.fabric.microsoft.com/.default`) — it never calls Azure
+Resource Manager, so the service principal does **not** need any role
+assignment on `AZURE_SUBSCRIPTION_ID`. However, `azure/login` by default
+also tries to select a subscription context after signing in, and fails
+with `No subscriptions found for ***` if the service principal has zero
+subscription-scoped role assignments. The `deploy-fabric.yml` workflow sets
+`allow-no-subscriptions: true` on the login step to avoid this — if you
+copy this workflow elsewhere, keep that flag rather than granting the
+service principal an unnecessary subscription role.
+
+## 8. Data refresh
 
 This repository does not configure a data source credential or a refresh
 schedule for the semantic model. After a real deployment, an operator must
